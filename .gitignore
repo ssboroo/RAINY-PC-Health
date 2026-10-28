@@ -1,0 +1,8 @@
+dist/
+*.zip
+preview.png
+self-test.txt
+smoke-test.txt
+diagnostics-test.json
+test-error.txt
+release-notes.md

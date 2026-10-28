@@ -1,0 +1,71 @@
+name: Build portable Windows app
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and classification tests
+        shell: powershell
+        run: ./build.ps1
+      - name: Render native UI and check real diagnostics
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          foreach($argument in @('--smoke-test','--diagnostics-test')) {
+            $p=Start-Process .\dist\RAINY-PC-Health.exe -ArgumentList $argument -PassThru
+            if(!$p.WaitForExit(300000)) { $p.Kill(); throw "Timed out: $argument" }
+            if($p.ExitCode -ne 0) { throw "Failed: $argument (exit $($p.ExitCode))" }
+          }
+          if(!(Test-Path preview.png)) { throw 'UI render missing' }
+          Get-Content diagnostics-test.json
+      - name: Package portable download
+        shell: powershell
+        run: |
+          Copy-Item README.md dist\README.md
+          $hash=(Get-FileHash dist\RAINY-PC-Health.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  RAINY-PC-Health.exe" | Set-Content dist\SHA256SUMS.txt -Encoding ascii
+          Compress-Archive -Path dist\* -DestinationPath RAINY-PC-Health-Portable.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RAINY-PC-Health-Portable
+          path: |
+            dist/RAINY-PC-Health.exe
+            dist/SHA256SUMS.txt
+            dist/README.md
+            preview.png
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-results
+          path: |
+            self-test.txt
+            smoke-test.txt
+            diagnostics-test.json
+            test-error.txt
+      - name: Publish tested portable build
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag="v1.0.${{ github.run_number }}"
+          $notes=@'
+          Portable native Windows app with Mongolian UI. Download RAINY-PC-Health.exe directly or extract the ZIP. No installation required.
+
+          Includes device and driver checks, activation evidence, Defender/firewall settings, installed software inventory, local reports, and RAINY contact shortcuts.
+
+          Build, classification tests, native UI render, and collector smoke checks passed on the GitHub Windows runner. Consumer Windows 10/11 hardware coverage remains to be validated. This is not a full malware scanner or a guarantee that every issue is detected. The EXE is not code-signed.
+          '@
+          $notes | Set-Content release-notes.md -Encoding utf8
+          gh release create $tag dist/RAINY-PC-Health.exe RAINY-PC-Health-Portable.zip dist/SHA256SUMS.txt preview.png --title "RAINY PC Health $tag" --notes-file release-notes.md --target ${{ github.sha }}
+          if($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
