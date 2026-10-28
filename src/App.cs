@@ -79,7 +79,7 @@ namespace RainyHealth {
                     var findings=new List<Finding>();var scanner=new Scanner();
                     var result=scanner.Run(d=> { if(Finding.Get(d,"kind")=="finding") findings.Add(Finding.From(d)); });
                     File.WriteAllText("diagnostics-test.json",new JavaScriptSerializer().Serialize(new {complete=result.Complete,count=findings.Count,categories=findings.Select(x=>x.Category).Distinct().ToArray(),unknown=findings.Count(x=>x.State=="unknown")}),Encoding.UTF8);
-                    if(!result.Complete || findings.Count<10 || findings.Select(x=>x.Category).Distinct().Count()!=6) return 2;
+                    if(!result.Complete || findings.Count<10 || findings.All(x=>x.State=="unknown") || findings.Select(x=>x.Category).Distinct().Count()!=6) return 2;
                     return 0;
                 }
                 var app=new Application();
@@ -130,13 +130,24 @@ namespace RainyHealth {
             Refresh();
             if(demo) Window.Loaded+=(s,e)=> {
                 LoadDemo();
+                UI<Button>("NavDrivers").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                if(UI<ItemsControl>("ResultList").Items.Count!=1) throw new Exception("Category filtering failed");
+                UI<TextBox>("SearchBox").Text="no-matching-result-123";
+                if(UI<ItemsControl>("ResultList").Items.Count!=0||UI<Border>("EmptyState").Visibility!=Visibility.Visible) throw new Exception("Search empty state failed");
+                UI<TextBox>("SearchBox").Text="";UI<Button>("NavAll").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                UI<CheckBox>("IssuesOnly").IsChecked=true;
+                if(UI<ItemsControl>("ResultList").Items.Count!=2) throw new Exception("Issue filtering failed");
+                UI<CheckBox>("IssuesOnly").IsChecked=false;
                 Window.Dispatcher.BeginInvoke(new Action(()=> {
                     try {
-                        var root=(FrameworkElement)Window.Content;root.Measure(new Size(1180,764));root.Arrange(new Rect(0,0,1180,764));root.UpdateLayout();
-                        var bitmap=new RenderTargetBitmap(1180,764,96,96,PixelFormats.Pbgra32);bitmap.Render(root);
-                        var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));
-                        using(var output=File.Create("preview.png")) encoder.Save(output);
-                        File.WriteAllText("smoke-test.txt","WPF XAML loaded, bindings populated, layout rendered. SAMPLE DATA ONLY.");
+                        var root=(FrameworkElement)Window.Content;Window.Content=null;
+                        foreach(var size in new [] {new Size(1180,810),new Size(960,640)}) {
+                            root.Width=size.Width;root.Height=size.Height;root.Measure(size);root.Arrange(new Rect(new Point(0,0),size));root.UpdateLayout();
+                            var bitmap=new RenderTargetBitmap((int)size.Width,(int)size.Height,96,96,PixelFormats.Pbgra32);bitmap.Render(root);
+                            var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                            using(var output=File.Create(size.Width==1180?"preview.png":"preview-compact.png")) encoder.Save(output);
+                        }
+                        File.WriteAllText("smoke-test.txt","PASS: WPF load, category/search/issue filters, empty state, 1180x810 and 960x640 layouts rendered. SAMPLE DATA ONLY.");
                     } catch(Exception ex) { File.WriteAllText("test-error.txt",ex.ToString());Environment.ExitCode=1; }
                     Window.Close();
                 }),DispatcherPriority.ApplicationIdle);
@@ -212,7 +223,7 @@ namespace RainyHealth {
                 new Finding {Category="system",State="info",Title="Сүүлийн hotfix",Summary="Шинэчлэлтийн бүртгэл",Detail="ЖИШЭЭ ӨГӨГДӨЛ."},
                 new Finding {Category="apps",State="info",Title="Суулгасан програмууд",Summary="24 програмын бүртгэл",Detail="ЖИШЭЭ ӨГӨГДӨЛ."}
             });
-            complete=true;UI<TextBlock>("HeroTitle").Text="Таны тайлан бэлэн боллоо";UI<TextBlock>("HeroSubtitle").Text="ЗАГВАР ХАРАГДАЦ · ЖИШЭЭ ӨГӨГДӨЛ";UI<ProgressBar>("ScanProgress").Value=100;UI<TextBlock>("ScanStatus").Text="UI preview · бодит оношилгоо биш";Refresh();
+            complete=true;UI<Button>("ScanButton").Content="Дахин шалгах  ↻";UI<TextBlock>("HeroTitle").Text="Таны тайлан бэлэн боллоо";UI<TextBlock>("HeroSubtitle").Text="ЗАГВАР ХАРАГДАЦ · ЖИШЭЭ ӨГӨГДӨЛ";UI<ProgressBar>("ScanProgress").Value=100;UI<TextBlock>("ScanStatus").Text="UI preview · бодит оношилгоо биш";Refresh();
         }
     }
 }

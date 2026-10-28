@@ -42,6 +42,7 @@ jobs:
             dist/SHA256SUMS.txt
             dist/README.md
             preview.png
+            preview-compact.png
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()

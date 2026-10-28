@@ -1,6 +1,6 @@
 dist/
 *.zip
-preview.png
+preview*.png
 self-test.txt
 smoke-test.txt
 diagnostics-test.json

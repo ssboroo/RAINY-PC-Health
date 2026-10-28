@@ -7,6 +7,8 @@
 
 Монгол интерфэйстэй, суулгалт шаардахгүй Windows desktop програм. Native WPF интерфэйс, нэг EXE, гуравдагч runtime багцлахгүй. Windows-ийн .NET Framework 4.8 болон Windows PowerShell 5.1-ийг ашиглана. Build хэмжээний дээд хязгаар 2 MB; release дээр бодит хэмжээ нь харагдана.
 
+![Native desktop preview — жишээ өгөгдөл](https://github.com/ssboroo/RAINY-PC-Health/releases/latest/download/preview.png)
+
 ## Татаж ажиллуулах
 
 1. [Latest release](https://github.com/ssboroo/RAINY-PC-Health/releases/latest)-ээс **RAINY-PC-Health.exe** татна. ZIP сонговол эхлээд задална.
