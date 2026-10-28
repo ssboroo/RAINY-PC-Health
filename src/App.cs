@@ -128,7 +128,7 @@ namespace RainyHealth {
             UI<CheckBox>("IssuesOnly").Checked+=(s,e)=>Refresh();UI<CheckBox>("IssuesOnly").Unchecked+=(s,e)=>Refresh();
             Window.PreviewKeyDown+=(s,e)=> { if(e.Key==Key.Escape&&scanning&&scanner!=null) { scanner.Cancel();e.Handled=true; } if(e.Key==Key.F&&Keyboard.Modifiers==ModifierKeys.Control) { UI<TextBox>("SearchBox").Focus();e.Handled=true; } };
             Refresh();
-            if(demo) Window.Loaded+=(s,e)=> {
+            if(demo) Window.Loaded+=async(s,e)=> {
                 LoadDemo();
                 UI<Button>("NavDrivers").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 if(UI<ItemsControl>("ResultList").Items.Count!=1) throw new Exception("Category filtering failed");
@@ -138,20 +138,26 @@ namespace RainyHealth {
                 UI<CheckBox>("IssuesOnly").IsChecked=true;
                 if(UI<ItemsControl>("ResultList").Items.Count!=2) throw new Exception("Issue filtering failed");
                 UI<CheckBox>("IssuesOnly").IsChecked=false;
-                Window.Dispatcher.BeginInvoke(new Action(()=> {
-                    try {
-                        var root=(FrameworkElement)Window.Content;Window.Content=null;
-                        foreach(var size in new [] {new Size(1180,810),new Size(960,640)}) {
-                            root.Width=size.Width;root.Height=size.Height;root.Measure(size);root.Arrange(new Rect(new Point(0,0),size));root.UpdateLayout();
-                            var bitmap=new RenderTargetBitmap((int)size.Width,(int)size.Height,96,96,PixelFormats.Pbgra32);bitmap.Render(root);
-                            var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));
-                            using(var output=File.Create(size.Width==1180?"preview.png":"preview-compact.png")) encoder.Save(output);
-                        }
-                        File.WriteAllText("smoke-test.txt","PASS: WPF load, category/search/issue filters, empty state, 1180x810 and 960x640 layouts rendered. SAMPLE DATA ONLY.");
-                    } catch(Exception ex) { File.WriteAllText("test-error.txt",ex.ToString());Environment.ExitCode=1; }
-                    Window.Close();
-                }),DispatcherPriority.ApplicationIdle);
+                try {
+                    await Task.Delay(150);
+                    CapturePreview("preview.png");
+                    Window.Width=960;Window.Height=640;
+                    await Task.Delay(150);
+                    CapturePreview("preview-compact.png");
+                    File.AppendAllText("smoke-test.txt","PASS: WPF load, category/search/issue filters, empty state and live-window layouts. SAMPLE DATA ONLY.");
+                } catch(Exception ex) { File.WriteAllText("test-error.txt",ex.ToString());Environment.ExitCode=1; }
+                Window.Close();
             };
+        }
+        private void CapturePreview(string path) {
+            Window.UpdateLayout();
+            var root=(FrameworkElement)Window.Content;
+            int width=(int)Math.Ceiling(root.ActualWidth),height=(int)Math.Ceiling(root.ActualHeight);
+            if(width<900||height<500) throw new Exception("Unexpected preview dimensions");
+            var bitmap=new RenderTargetBitmap(width,height,96,96,PixelFormats.Pbgra32);bitmap.Render(root);
+            var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using(var output=File.Create(path)) encoder.Save(output);
+            File.AppendAllText("smoke-test.txt",path+": "+width+" x "+height+"\r\n");
         }
         private void ToggleMaximize() { Window.MaxHeight=SystemParameters.WorkArea.Height;Window.WindowState=Window.WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized; }
         private void Open(string uri) {
