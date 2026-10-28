@@ -10,7 +10,7 @@ function Get-LicenseState($Code) {
     if ([int]$Code -in @(0,2,3,4,5,6)) { return 'warning' }
     return 'unknown'
 }
-function Get-DiskState($Percent) {
+function Get-DiskState([Nullable[double]]$Percent) {
     if ($null -eq $Percent -or $Percent -lt 0 -or $Percent -gt 100) { return 'unknown' }
     if ($Percent -lt 5) { return 'critical' }
     if ($Percent -lt 15) { return 'warning' }
